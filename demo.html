@@ -391,6 +391,34 @@
                         <option value="repulse">Repulse</option>
                     </select>
                 </div>
+                
+                <!-- Cursor Bounce Effect -->
+                <div class="control-item">
+                    <label class="control-label">
+                        <input type="checkbox" id="enableCursorBounce"> Enable cursor bounce
+                    </label>
+                    <small style="display: block; margin-top: 2px; font-size: 10px; opacity: 0.7;">
+                        Particles will bounce off your cursor like a screensaver
+                    </small>
+                </div>
+                
+                <!-- Bounce Strength -->
+                <div class="control-item" id="bounceStrengthContainer" style="display: none;">
+                    <label class="control-label">Bounce strength</label>
+                    <div class="control-row">
+                        <input type="range" class="control-slider" id="bounceStrength" min="1" max="3" step="0.1" value="1.5">
+                        <input type="number" class="control-value" id="bounceStrengthValue" value="1.5" step="0.1">
+                    </div>
+                </div>
+                
+                <!-- Cursor Size -->
+                <div class="control-item" id="cursorSizeContainer" style="display: none;">
+                    <label class="control-label">Cursor radius</label>
+                    <div class="control-row">
+                        <input type="range" class="control-slider" id="cursorSize" min="10" max="100" value="35">
+                        <input type="number" class="control-value" id="cursorSizeValue" value="35">
+                    </div>
+                </div>
             </div>
             
             <div class="control-actions">
@@ -1289,6 +1317,19 @@
                 }
             });
             
+            // Toggle bounce controls visibility
+            const enableCursorBounce = document.getElementById('enableCursorBounce');
+            const bounceStrengthContainer = document.getElementById('bounceStrengthContainer');
+            const cursorSizeContainer = document.getElementById('cursorSizeContainer');
+            
+            enableCursorBounce.addEventListener('change', function() {
+                bounceStrengthContainer.style.display = this.checked ? 'block' : 'none';
+                cursorSizeContainer.style.display = this.checked ? 'block' : 'none';
+                
+                // Log the change
+                console.log(`Cursor bounce ${this.checked ? 'enabled' : 'disabled'}`);
+            });
+            
             // Function to get current config from controls
             function getConfigFromControls() {
                 const config = {
@@ -1399,7 +1440,30 @@
             
             // Apply changes button
             document.getElementById('applyChanges').addEventListener('click', function() {
-                // Destroy existing particles
+                // Get the bounce settings
+                const bounceEnabled = document.getElementById('enableCursorBounce').checked;
+                const bounceStrength = parseFloat(document.getElementById('bounceStrength').value);
+                const cursorSize = parseInt(document.getElementById('cursorSize').value);
+                
+                // Apply bounce settings to gravity.js if enabled
+                if (bounceEnabled) {
+                    // Update global bounce settings in gravity.js
+                    if (typeof window.updateBounceSettings === 'function') {
+                        window.updateBounceSettings(bounceStrength, cursorSize);
+                    }
+                    // Enable bounce mode
+                    if (typeof window.applyBounceCursor === 'function') {
+                        window.applyBounceCursor();
+                        statusEl.textContent = 'Current mode: Gravity with Cursor Bounce';
+                        console.log(`Applied gravity with cursor bounce (strength: ${bounceStrength}, size: ${cursorSize}px)`);
+                        return; // Skip the standard particles.js update
+                    }
+                }
+                
+                // If we reached here, either bounce is not enabled or the functions aren't available
+                // Proceed with standard particles.js update
+                
+                // Destroy existing particles (this also stops gravity sim if active)
                 destroyParticles();
                 
                 // Get config from controls
@@ -1409,9 +1473,9 @@
                 particlesJS('particles-js', config);
                 
                 // Update status
-                statusEl.textContent = 'Current preset: Custom';
+                statusEl.textContent = 'Current mode: Custom Particles.js Config';
                 
-                console.log('Applied custom configuration');
+                console.log('Applied custom particles.js configuration');
             });
             
             // Reset to default button
@@ -1868,6 +1932,18 @@
                 stopGravitySimulation();
             };
         }
+        
+        // Override applyPureGravity to update controls
+        const originalApplyPureGravity = window.applyPureGravity || function() {};
+        window.applyPureGravity = function() {
+            // Update hover mode in UI to show correct state
+            document.getElementById('hoverMode').value = 'bounce';
+            
+            // Call the original function from gravity.js
+            if (typeof originalApplyPureGravity === 'function') {
+                originalApplyPureGravity();
+            }
+        };
     </script>
     <script src="gravity.js"></script>
 </body>
